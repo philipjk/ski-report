@@ -1,4 +1,4 @@
-# Skialp Report Website - Summary of What We've Done
+# Skialp Report Website
 
 ## Backend: FastAPI (Python)
 - **What it does:** Serves skialp reports by fetching weather & avalanche data from external APIs.
@@ -38,11 +38,3 @@
 - Backend fetches **real-time weather & avalanche data**.
 - Frontend displays reports **live from FastAPI**.
 
----
-
-# What’s Next?
-- Add **user-submitted reports**?
-- Improve **UI/UX** (better design, maps, charts)?
-- Expand **data sources** (better avalanche forecasts)?
-
-Let me know the next move!
