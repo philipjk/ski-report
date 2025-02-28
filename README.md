@@ -12,7 +12,7 @@
   - Created `main.py` with a `/report` endpoint.
   - Configured a `Dockerfile` for Fly.io.
   - Deployed backend with `flyctl deploy`.
-  - **Live Backend:** `https://your-app-name.fly.dev/report`
+  - **Live Backend:** `https://skilap-backend.fly.dev/report`
 
 ---
 
@@ -29,7 +29,7 @@
   - Built a simple UI to display the report.
   - Connected the frontend to the FastAPI backend.
   - Deployed with `vercel deploy`.
-  - **Live Frontend:** `https://your-vercel-app.vercel.app`
+  - **Live Frontend:** `https://skialp-frontend.vercel.app`
 
 ---
 
