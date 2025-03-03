@@ -63,3 +63,6 @@ Thumbs.db
 
 # Fly.io
 .fly/ 
+
+
+launch-both.sh
