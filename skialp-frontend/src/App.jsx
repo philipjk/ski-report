@@ -6,6 +6,8 @@ export default function SkialpReport() {
   const [report, setReport] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFetchingReport, setIsFetchingReport] = useState(false);
   
   // Use local backend in development, production backend otherwise
   const BACKEND_URL = import.meta.env.DEV 
@@ -13,10 +15,11 @@ export default function SkialpReport() {
     : "https://skialp-backend.fly.dev";
 
   const fetchReport = async (locationData) => {
+    setIsFetchingReport(true);
     try {
       const response = await axios.get(`${BACKEND_URL}/report`, {
         params: {
-          location: locationData.name.split(',')[0],
+          location: locationData.name,
           lat: locationData.lat,
           lon: locationData.lon
         }
@@ -25,12 +28,20 @@ export default function SkialpReport() {
     } catch (error) {
       console.error("Error fetching report:", error);
       setSearchError("Failed to fetch weather report");
+    } finally {
+      setIsFetchingReport(false);
     }
   };
 
   const handleLocationSearch = async (e) => {
     e.preventDefault();
+    setIsSearching(true);
+    setSearchError(null);
+    console.log("Submitting search for:", searchQuery);
+    console.log("Using backend URL:", BACKEND_URL);
+    
     try {
+      console.log("Making fetch request to:", `${BACKEND_URL}/validate-location`);
       const response = await fetch(`${BACKEND_URL}/validate-location`, {
         method: 'POST',
         headers: {
@@ -39,7 +50,11 @@ export default function SkialpReport() {
         body: JSON.stringify({ query: searchQuery }),
       });
       
+      console.log("Got response with status:", response.status);
+      
       const data = await response.json();
+      console.log("Response data:", data);
+      
       if (data.error) {
         setSearchError(data.error);
         return;
@@ -49,14 +64,22 @@ export default function SkialpReport() {
       setSearchError(null);
       fetchReport(data.location);
     } catch (error) {
-      setSearchError('Failed to validate location');
+      console.error("Detailed connection error:", error);
+      setSearchError('Network error: Could not connect to server');
+    } finally {
+      setIsSearching(false);
     }
   };
+
+  // Loading spinner component
+  const LoadingSpinner = () => (
+    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-6">
       <div className="max-w-3xl w-full bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center">
-        <h1 className="text-5xl font-bold text-blue-900 mb-6">Skialp Report</h1>
+        <h1 className="text-5xl font-bold text-blue-900 mb-6">Ski-touring Report</h1>
         <p className="text-lg text-gray-600 mb-6">
           Get snow conditions and weather reports for your ski touring destination
         </p>
@@ -73,13 +96,22 @@ export default function SkialpReport() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Enter a location (e.g., Chamonix, Courmayeur)"
               className="flex-1 p-3 border rounded-lg text-lg text-center shadow-sm"
+              disabled={isSearching}
               autoFocus
             />
             <button 
               type="submit" 
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium shadow-md"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium shadow-md flex items-center justify-center"
+              disabled={isSearching || !searchQuery.trim()}
             >
-              Get Report
+              {isSearching ? (
+                <>
+                  <LoadingSpinner />
+                  <span className="ml-2">Searching...</span>
+                </>
+              ) : (
+                "Get Report"
+              )}
             </button>
           </div>
         </form>
@@ -96,27 +128,63 @@ export default function SkialpReport() {
           </div>
         )}
 
-        {report && (
+        {isFetchingReport && (
+          <div className="mt-8 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mb-4"></div>
+            <p className="text-lg text-gray-600">Loading weather report...</p>
+          </div>
+        )}
+
+        {report && !isFetchingReport && (
           <div className="mt-8 border-t pt-6 w-full">
             <h2 className="text-2xl font-semibold mb-4">Current Conditions</h2>
             <div className="grid gap-6 md:grid-cols-2">
               <div className="p-6 bg-blue-50 rounded-lg shadow">
                 <p className="text-lg"><strong>Temperature:</strong> {report.temperature}°C</p>
-                <p className="text-lg"><strong>Snow Depth:</strong> {report.snow_depth} cm</p>
+                <p className="text-lg"><strong>Freezing Level:</strong> {report.freezing_level} mm</p>
               </div>
               <div className="p-6 bg-blue-50 rounded-lg shadow">
-                <p className="text-lg"><strong>Avalanche Risk:</strong> {report.avalanche_risk}</p>
-                <p className="text-lg"><strong>Summary:</strong> {report.summary}</p>
+              <p className="text-lg">
+                <strong>Avalanche Risk Info:</strong><br />
+                {report.avalanche_risk ? (
+                  <a href={report.avalanche_risk} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                    Avalanche Bulletin
+                  </a>
+                ) : (
+                  <span>Check online</span>
+                )}
+              </p>
               </div>
             </div>
+
+            {/* Nearby Peaks */}
+            {report.nearby_peaks && report.nearby_peaks.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-xl font-semibold mb-3">Nearby Peaks</h3>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {report.nearby_peaks.map((peak, index) => (
+                    <div key={index} className="p-4 bg-blue-50 rounded-lg shadow">
+                      <p className="font-medium">{peak.name}</p>
+                      <p className="text-gray-600">{peak.elevation}m</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {report.meteogram && (
               <div className="mt-6 w-full">
-                <img 
-                  src={report.meteogram} 
-                  alt="Weather forecast meteogram" 
-                  className="w-full rounded-lg shadow-lg"
-                />
-              </div>
+              <img 
+                src={report.meteogram} 
+                alt="Weather forecast meteogram" 
+                className="w-full rounded-lg shadow-lg"
+              />
+              {report.meteogram_analysis && (
+                <div className="mt-4 p-6 bg-blue-50 rounded-lg shadow">
+                  <h3 className="text-xl font-semibold mb-3">Weather Analysis</h3>
+                  <p className="text-gray-700 whitespace-pre-line">{report.meteogram_analysis}</p>
+                </div>
+              )}
+            </div>
             )}
           </div>
         )}
